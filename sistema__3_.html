@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Seguimiento OT — Producción (Corregido)</title>
+<!-- Usamos CDNs confiables para asegurar que las librerías carguen siempre -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root {
+  --navy: #1a2744; --navy2: #243158; --blue: #2563eb; --blue-light: #dbeafe;
+  --blue-mid: #3b82f6; --green: #16a34a; --green-light: #dcfce7; --amber: #d97706;
+  --amber-light: #fef3c7; --red: #dc2626; --red-light: #fee2e2; --gray: #64748b;
+  --gray-light: #f1f5f9; --border: #e2e8f0; --white: #ffffff; --text: #1e293b;
+  --text2: #64748b; --radius: 10px; --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f4f8;color:var(--text);min-height:100vh}
+.topbar{background:var(--navy);color:#fff;padding:0 1.5rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--shadow-lg)}
+.topbar-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;letter-spacing:.01em}
+.topbar-brand .dot{width:8px;height:8px;background:#22c55e;border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.topbar-actions{display:flex;gap:8px}
+.navtabs{background:var(--navy2);padding:0 1.5rem;display:flex;gap:2px;border-bottom:2px solid rgba(255,255,255,0.08);overflow-x:auto}
+.navtab{padding:10px 16px;color:rgba(255,255,255,0.6);font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:6px;transition:all .15s;white-space:nowrap}
+.navtab:hover{color:rgba(255,255,255,0.85)}
+.navtab.active{color:#fff;border-bottom-color:#3b82f6}
+.navtab .count{background:rgba(255,255,255,0.15);border-radius:99px;padding:1px 7px;font-size:11px}
+.main{max-width:1400px;margin:0 auto;padding:1.5rem}
+.card{background:#fff;border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden;margin-bottom:1.5rem}
+.card-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.card-title{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+.card-body{padding:1.25rem}
+.proc-tabs{display:flex;gap:4px;background:var(--gray-light);padding:4px;border-radius:8px;margin-bottom:1.25rem;flex-wrap:wrap}
+.proc-tab{padding:6px 14px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--text2);display:flex;align-items:center;gap:6px;transition:all .15s}
+.proc-tab.active{background:#fff;color:var(--navy);box-shadow:0 1px 4px rgba(0,0,0,0.1)}
+.proc-tab .proc-dot{width:6px;height:6px;border-radius:50%}
+.dot-imp{background:#8b5cf6} .dot-lam{background:#06b6d4} .dot-ref{background:#f59e0b} .dot-sw{background:#10b981} .dot-pouch{background:#f43f5e}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group label{font-size:12px;font-weight:500;color:var(--text2)}
+.form-group input,.form-group select{padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--text);background:#fff;transition:border-color .15s}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,0.1)}
+.btn{padding:8px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid transparent;display:inline-flex;align-items:center;gap:6px;transition:all .15s;white-space:nowrap}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-success{background:var(--green);color:#fff;border-color:var(--green)}
+.btn-outline{background:#fff;color:var(--text);border-color:var(--border)}
+.btn-danger{background:var(--red);color:#fff;border-color:var(--red)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600}
+.badge-green{background:var(--green-light);color:var(--green)}
+.badge-blue{background:var(--blue-light);color:var(--blue)}
+.badge-amber{background:var(--amber-light);color:var(--amber)}
+.badge-red{background:var(--red-light);color:var(--red)}
+.badge-gray{background:var(--gray-light);color:var(--gray)}
+.tbl-wrap{overflow-x:auto;border-radius:8px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:var(--navy);color:#fff}
+th{padding:10px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.04em;white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:1.25rem}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;flex-direction:column;gap:4px}
+.stat-label{font-size:11px;color:var(--text2);font-weight:500}
+.stat-val{font-size:22px;font-weight:700;color:var(--navy)}
+.pb{height:6px;background:var(--gray-light);border-radius:3px;overflow:hidden;margin-top:4px}
+.pf{height:100%;border-radius:3px;transition:width .4s}
+.pf-green{background:var(--green)} .pf-blue{background:var(--blue)} .pf-amber{background:var(--amber)}
+.alert{padding:10px 14px;border-radius:6px;font-size:13px;display:flex;align-items:center;gap:8px;margin-bottom:1rem}
+.alert-success{background:var(--green-light);color:var(--green);border:1px solid #86efac}
+.alert-error{background:var(--red-light);color:var(--red);border:1px solid #fca5a5}
+.search-wrap{position:relative;flex:1;min-width:200px}
+.search-wrap input{width:100%;padding:8px 10px 8px 34px;border:1px solid var(--border);border-radius:6px;font-size:13px}
+.search-wrap .si{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text2)}
+.autocomplete-list{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:6px;max-height:220px;overflow-y:auto;z-index:50;box-shadow:var(--shadow-lg)}
+.ac-item{padding:8px 12px;font-size:13px;cursor:pointer}
+.ac-item:hover{background:var(--gray-light)}
+.filter-bar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:1rem}
+.ftag{padding:4px 12px;border-radius:99px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--text2);transition:all .15s}
+.ftag.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.proc-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:1rem 0}
+.proc-card{border:1px solid var(--border);border-radius:8px;padding:12px;position:relative}
+.proc-card.has-data{border-color:var(--blue);background:var(--blue-light)}
+.proc-card.no-data{background:var(--gray-light);opacity:.7}
+.proc-card-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.proc-card-kg{font-size:20px;font-weight:700}
+#toast{position:fixed;bottom:24px;right:24px;background:var(--navy);color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;display:flex;align-items:center;gap:8px;box-shadow:var(--shadow-lg);transform:translateY(100px);opacity:0;transition:all .3s;z-index:999;max-width:340px}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.toast-ok{background:#15803d}
+#toast.toast-err{background:#dc2626}
+.section{display:none}
+.section.active{display:block}
+.import-zone{border:2px dashed var(--border);border-radius:8px;padding:2rem;text-align:center;cursor:pointer;transition:all .15s}
+.import-zone:hover,.import-zone.drag{border-color:var(--blue);background:var(--blue-light)}
+.ot-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;display:flex;align-items:center;justify-content:center}
+.ot-modal{background:#fff;border-radius:12px;padding:2rem;width:320px;box-shadow:0 12px 40px rgba(0,0,0,0.18)}
+.ot-modal-header{display:flex;align-items:center;gap:10px;margin-bottom:1.25rem}
+.ot-modal-icon{width:38px;height:38px;border-radius:8px;background:var(--amber-light);display:flex;align-items:center;justify-content:center}
+.ot-modal-icon i{font-size:20px;color:var(--amber)}
+.ot-modal h3{font-size:15px;font-weight:600;margin:0}
+.ot-pass-wrap{position:relative;margin-bottom:.75rem}
+.ot-pass-wrap input{width:100%;padding:8px 36px 8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px}
+.ot-eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--text2);font-size:16px}
+.ot-modal-err{display:none;background:var(--red-light);color:var(--red);border:1px solid #fca5a5;border-radius:6px;padding:7px 10px;font-size:12px;margin-bottom:.75rem}
+.ot-modal-footer{display:flex;gap:8px}
+#lock-captura-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 1.25rem;background:var(--amber-light);border-bottom:1px solid #fde68a}
+#lock-captura-bar.unlocked{background:var(--green-light);border-bottom-color:#86efac}
+#captura-locked-content{display:none}
+#captura-locked-content.visible{display:block}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand"><span class="dot"></span> Sistema de Seguimiento OT</div>
+  <div class="topbar-actions">
+    <button class="btn btn-outline btn-sm" onclick="cambiarClave()"><i class="ti ti-key"></i> Cambiar clave</button>
+    <button class="btn btn-outline btn-sm" onclick="publicarHTML()" title="Guarda los datos dentro del HTML y descárgalo para subir a OneDrive"><i class="ti ti-cloud-upload"></i> Guardar y publicar</button>
+    <button class="btn btn-outline btn-sm" id="btn-vincular-excel" onclick="vincularExcel()" title="Cada registro que captures se guardará automáticamente en este archivo"><i class="ti ti-link"></i> <span id="vincular-label">Vincular Excel</span></button>
+    <button class="btn btn-outline btn-sm" onclick="exportarExcel()"><i class="ti ti-file-spreadsheet"></i> Exportar Excel</button>
+  </div>
+</div>
+
+<div class="navtabs">
+  <div class="navtab active" onclick="showSection('captura')" id="tab-captura"><i class="ti ti-plus"></i> Captura</div>
+  <div class="navtab" onclick="showSection('consulta')" id="tab-consulta"><i class="ti ti-search"></i> Consulta</div>
+  <div class="navtab" onclick="showSection('tabla')" id="tab-tabla"><i class="ti ti-table"></i> Tabla <span class="count" id="cnt-tabla">0</span></div>
+  <div class="navtab" onclick="showSection('importar')" id="tab-importar"><i class="ti ti-upload"></i> Importar</div>
+</div>
+
+<div class="main">
+  <!-- SECCIÓN CAPTURA -->
+  <div class="section active" id="sec-captura">
+    <div class="card">
+      <div class="card-header"><div class="card-title"><i class="ti ti-clipboard-plus"></i> Registro de Producción</div></div>
+      <div id="lock-captura-bar">
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:var(--amber)">
+          <i class="ti ti-lock"></i> <span id="lock-bar-msg">Captura protegida</span>
+        </div>
+        <button class="btn btn-sm btn-outline" id="lock-bar-btn" onclick="abrirModalClave()">Ingresar clave</button>
+      </div>
+      <div id="captura-locked-content" class="card-body">
+        <div id="alert-area"></div>
+        <div class="form-grid" style="margin-bottom:1rem">
+          <div class="form-group form-row-full">
+            <label>Número de Orden de Trabajo (OT) *</label>
+            <div class="search-wrap" style="max-width:320px">
+              <i class="ti ti-clipboard si"></i>
+              <input type="text" id="cap-ot" placeholder="Ej: OT26040468" autocomplete="off" oninput="onOTInput(this.value)">
+              <div class="autocomplete-list" id="ot-suggest" style="display:none"></div>
+            </div>
+            <div id="ot-info" style="font-size:12px;color:var(--text2);margin-top:4px"></div>
+          </div>
+        </div>
+        <div class="proc-tabs">
+          <button class="proc-tab active" onclick="switchProc('IMP')" id="ptab-IMP"><span class="proc-dot dot-imp"></span>Impresión</button>
+          <button class="proc-tab" onclick="switchProc('LAM')" id="ptab-LAM"><span class="proc-dot dot-lam"></span>Laminación</button>
+          <button class="proc-tab" onclick="switchProc('REF')" id="ptab-REF"><span class="proc-dot dot-ref"></span>Refinado</button>
+          <button class="proc-tab" onclick="switchProc('SW')" id="ptab-SW"><span class="proc-dot dot-sw"></span>Side Weld</button>
+          <button class="proc-tab" onclick="switchProc('POUCH')" id="ptab-POUCH"><span class="proc-dot dot-pouch"></span>Pouch</button>
+        </div>
+        <div id="form-container">
+           <!-- Formularios dinámicos -->
+           <div id="form-IMP" class="proc-form"><div class="form-grid">
+             <div class="form-group"><label>Fecha</label><input type="date" id="IMP-fecha"></div>
+             <div class="form-group"><label>Máquina</label><select id="IMP-maquina"></select></div>
+             <div class="form-group"><label>Turno</label><select id="IMP-turno"></select></div>
+             <div class="form-group"><label>Operador</label><select id="IMP-operador"></select></div>
+             <div class="form-group"><label>Supervisor</label><select id="IMP-supervisor"></select></div>
+             <div class="form-group"><label>Rollos</label><input type="number" id="IMP-rollos"></div>
+             <div class="form-group"><label>Kg Impresos</label><input type="number" id="IMP-kg"></div>
+             <div class="form-group"><label>Metros Lineales</label><input type="number" id="IMP-ml"></div>
+             <div class="form-group"><label>Millares</label><input type="number" id="IMP-piezas"></div>
+           </div></div>
+           <div id="form-LAM" class="proc-form" style="display:none"><div class="form-grid">
+             <div class="form-group"><label>Fecha</label><input type="date" id="LAM-fecha"></div>
+             <div class="form-group"><label>Máquina</label><select id="LAM-maquina"></select></div>
+             <div class="form-group"><label>Turno</label><select id="LAM-turno"></select></div>
+             <div class="form-group"><label>Operador</label><select id="LAM-operador"></select></div>
+             <div class="form-group"><label>Supervisor</label><select id="LAM-supervisor"></select></div>
+             <div class="form-group"><label>Kg Laminados</label><input type="number" id="LAM-kg"></div>
+             <div class="form-group"><label>Metros Lineales</label><input type="number" id="LAM-ml"></div>
+             <div class="form-group"><label>Millares</label><input type="number" id="LAM-piezas"></div>
+           </div></div>
+           <div id="form-REF" class="proc-form" style="display:none"><div class="form-grid">
+             <div class="form-group"><label>Fecha</label><input type="date" id="REF-fecha"></div>
+             <div class="form-group"><label>Máquina</label><select id="REF-maquina"></select></div>
+             <div class="form-group"><label>Turno</label><select id="REF-turno"></select></div>
+             <div class="form-group"><label>Operador</label><select id="REF-operador"></select></div>
+             <div class="form-group"><label>Supervisor</label><select id="REF-supervisor"></select></div>
+             <div class="form-group"><label>Kg Refinados</label><input type="number" id="REF-kg"></div>
+             <div class="form-group"><label>Metros Lineales</label><input type="number" id="REF-ml"></div>
+             <div class="form-group"><label>Millares</label><input type="number" id="REF-piezas"></div>
+             <div class="form-group"><label>Paquetes</label><input type="number" id="REF-paq"></div>
+           </div></div>
+           <div id="form-SW" class="proc-form" style="display:none"><div class="form-grid">
+             <div class="form-group"><label>Fecha</label><input type="date" id="SW-fecha"></div>
+             <div class="form-group"><label>Máquina</label><select id="SW-maquina"></select></div>
+             <div class="form-group"><label>Turno</label><select id="SW-turno"></select></div>
+             <div class="form-group"><label>Operador</label><select id="SW-operador"></select></div>
+             <div class="form-group"><label>Supervisor</label><select id="SW-supervisor"></select></div>
+             <div class="form-group"><label>Kilogramos</label><input type="number" id="SW-kg"></div>
+             <div class="form-group"><label>Metros Lineales</label><input type="number" id="SW-ml"></div>
+             <div class="form-group"><label>Millares</label><input type="number" id="SW-piezas"></div>
+           </div></div>
+           <div id="form-POUCH" class="proc-form" style="display:none"><div class="form-grid">
+             <div class="form-group"><label>Fecha</label><input type="date" id="POUCH-fecha"></div>
+             <div class="form-group"><label>Máquina</label><select id="POUCH-maquina"></select></div>
+             <div class="form-group"><label>Turno</label><select id="POUCH-turno"></select></div>
+             <div class="form-group"><label>Operador</label><select id="POUCH-operador"></select></div>
+             <div class="form-group"><label>Supervisor</label><select id="POUCH-supervisor"></select></div>
+             <div class="form-group"><label>Kilogramos</label><input type="number" id="POUCH-kg"></div>
+             <div class="form-group"><label>Metros Lineales</label><input type="number" id="POUCH-ml"></div>
+             <div class="form-group"><label>Millares</label><input type="number" id="POUCH-piezas"></div>
+           </div></div>
+        </div>
+        <div style="margin-top:1.5rem;display:flex;gap:10px">
+          <button class="btn btn-primary" onclick="guardarRegistro()"><i class="ti ti-device-floppy"></i> Guardar Registro</button>
+          <button class="btn btn-outline" onclick="limpiarForm()">Limpiar</button>
+        </div>
+      </div>
+    </div>
+    <div class="card"><div class="card-header"><div class="card-title"><i class="ti ti-history"></i> Últimos Registros</div></div><div class="card-body" id="ultimos-body"></div></div>
+  </div>
+
+  <!-- SECCIONES RESTANTES -->
+  <div class="section" id="sec-consulta"><div class="card"><div class="card-header"><div class="card-title"><i class="ti ti-search"></i> Consultar OT</div></div><div class="card-body"><div class="search-wrap" style="max-width:400px;margin-bottom:1.5rem"><i class="ti ti-search si"></i><input type="text" id="cons-ot" placeholder="Ingresa número de OT..." oninput="onConsInput(this.value)"><div class="autocomplete-list" id="cons-suggest" style="display:none"></div></div><div id="cons-result"></div></div></div></div>
+  <div class="section" id="sec-tabla"><div class="card"><div class="card-header"><div class="card-title"><i class="ti ti-table"></i> Historial</div><div class="search-wrap" style="max-width:250px"><i class="ti ti-search si"></i><input type="text" id="tbl-search" placeholder="Buscar OT..." oninput="renderTabla()"></div></div><div class="card-body"><div class="filter-bar"><div class="ftag active" onclick="setFilter(this, 'all')" data-f="all">Todos</div><div class="ftag" onclick="setFilter(this, 'IMP')" data-f="IMP">Impresión</div><div class="ftag" onclick="setFilter(this, 'LAM')" data-f="LAM">Laminación</div><div class="ftag" onclick="setFilter(this, 'REF')" data-f="REF">Refinado</div><div class="ftag" onclick="setFilter(this, 'SW')" data-f="SW">Side Weld</div><div class="ftag" onclick="setFilter(this, 'POUCH')" data-f="POUCH">Pouch</div></div><div id="tabla-body"></div></div></div></div>
+  <div class="section" id="sec-importar"><div class="card"><div class="card-header"><div class="card-title"><i class="ti ti-upload"></i> Importar Excel</div></div><div class="card-body">
+
+<div style="background:var(--amber-light);border:1px solid #fde68a;border-radius:8px;padding:12px 16px;margin-bottom:1.5rem;font-size:13px">
+  <strong>⚠️ Importante:</strong> Este sistema guarda los datos en tu navegador (IndexedDB + localStorage). Si limpias el caché o abres el archivo en otro navegador, <strong>los datos se pierden</strong>. Usa el botón <em>"Guardar datos"</em> del menú superior para crear un respaldo <code>.json</code> después de cada importación.
+</div>
+
+<div style="background:var(--blue-light);border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;margin-bottom:1.5rem;font-size:13px">
+  <strong>🔗 Guardado automático en tu Excel maestro:</strong> Usa el botón <em>"Vincular Excel"</em> (arriba, en la barra superior) y selecciona tu archivo <code>.xlsx</code> (el mismo que importas). A partir de ese momento, cada vez que guardes un registro en "Captura", el sistema agrega una <strong>fila nueva</strong> en la hoja correspondiente (IMPRESION, LAMINACION, REFINADO, SIDE WELD o POUCH) de ese archivo, respetando sus columnas actuales — sin tocar ninguna otra hoja (rep-ov-espec, rep-dtll-ocmp, SEGUIMIENTO A OT), fórmulas ni formato.
+  <br><br>
+  Ten en cuenta:
+  <ul style="margin:4px 0 0 18px;padding:0">
+    <li>Solo funciona en <strong>Chrome o Edge de escritorio</strong> (no Firefox, Safari ni celular).</li>
+    <li>Como tu archivo es grande (~46 MB), cada guardado puede tardar varios segundos mientras el navegador lo abre y reescribe completo.</li>
+    <li>Al reescribir el archivo, la librería que usamos (SheetJS) puede no conservar el 100% del formato, dibujos o comentarios originales — aceptaste este riesgo. Te recomendamos tener un respaldo del archivo por si acaso.</li>
+    <li>Si <strong>borras</strong> un registro dentro del sistema, eso NO se refleja en el Excel maestro (habría que borrarlo ahí manualmente); solo la <strong>captura</strong> de registros nuevos se sincroniza automáticamente.</li>
+  </ul>
+</div>
+
+<div class="import-zone" id="drop-zone" onclick="document.getElementById('file-input').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="onDrop(event)"><i class="ti ti-file-spreadsheet" style="font-size:40px;color:var(--blue);display:block;margin-bottom:8px"></i><div style="font-weight:600">Arrastra tu archivo Excel aquí</div><div style="font-size:12px;color:var(--text2)">o haz clic para seleccionar (.xlsx / .xls)</div><input type="file" id="file-input" accept=".xlsx,.xls" style="display:none" onchange="importExcel(this.files[0])"></div>
+<div id="import-log" style="margin-top:1rem"></div>
+
+<div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border)">
+  <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--navy)">🔄 Restaurar respaldo</div>
+  <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Si ya tenías un respaldo <code>.json</code> guardado, cárgalo aquí para recuperar tus datos.</div>
+  <label class="btn btn-outline btn-sm" style="cursor:pointer"><i class="ti ti-file-import"></i> Cargar respaldo .json <input type="file" accept=".json" style="display:none" onchange="restaurarBackup(this.files[0])"></label>
+</div>
+
+<div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border)"><div style="font-size:13px;font-weight:500;margin-bottom:8px;color:var(--red)">⚠️ Zona de peligro</div><button class="btn btn-danger btn-sm" onclick="limpiarTodo()"><i class="ti ti-trash"></i> Borrar todos los datos</button></div>
+</div></div></div>
+</div>
+
+<!-- MODALES -->
+<div class="ot-overlay" id="ot-modal-overlay" style="display: none;"><div class="ot-modal"><div class="ot-modal-header"><div class="ot-modal-icon"><i class="ti ti-lock"></i></div><div><h3 id="ot-modal-titulo">Acceso</h3><p id="ot-modal-subtitulo"></p></div></div><div class="ot-pass-wrap"><input type="password" id="ot-pass-input"><span class="ot-eye" onclick="toggleOtEye()"><i id="ot-eye-icon" class="ti ti-eye"></i></span></div><div class="ot-modal-err" id="ot-modal-err"></div><div class="ot-modal-footer"><button class="btn btn-primary" id="ot-btn-ingresar" style="flex:1">Ingresar</button><button class="btn btn-outline" onclick="cerrarModalClave()">Cancelar</button></div></div></div>
+<div id="toast"><i class="ti ti-check"></i><span id="toast-msg"></span></div>
+
+<script>
+// --- DATA LAYER ---
+const STORAGE_KEY = 'ot_sistema_v1';
+const PASS_STORAGE_KEY = 'ot_captura_hash';
+const PROC_NAMES = {IMP:'Impresión',LAM:'Laminación',REF:'Refinado',SW:'Side Weld',POUCH:'Pouch'};
+const PROC_LIST = ['IMP','LAM','REF','SW','POUCH'];
+
+// Datos de configuración (mantenidos del original)
+const CATS = {"IMPRESION":{"MAQUINA":["F2-1","F2-2","F2-3","F4-1","F4-2","F4-3","FJ-2","FLEXO"],"TURNO":["1","2","3","4","6","8","9","A","B","C","D"],"OPERADOR":["ADRIAN RODRIGUEZ","ADRIAN ROMERO","ALEJANDRO MOLINA TORIZ","ANTONIO GRANADOS","ARMANDO","BRANDON VILLALTA","CARLOS DOMINGUEZ","DANIEL ROJAS","EDMUNDO MARTÍNEZ","EDUARDO ISAAC MUÑOZ","ERICK RODRIGUEZ","ESTANISLAO CARLOS JACINTO","FABIAN GONZALEZ GARCÍA","FELIX GUDIÑO","GERMAN GOMEZ","GUSTAVO HERRERA GUEVARA","HUGO JAIME RODRIGUEZ","IVAN FLORES GUEVARA","JAIR CARRANZA","JAIR MENDOZA","JESUS ANGUIANO SANDOVAL","JESUS HERNÁNDEZ MARTÍNEZ","JOSE","JOSE  RODRIGUEZ","JOSE ANTONIO GUZMAN","JOSE GUERERO","JOSE JAVIER LEAL PEREZ","JOSE MANUEL BALDERAS","JUAN LARA","MIGUEL GRANADOS","NARCISO HERNANDEZ","PABLO SEDEÑO","REYNALDO LEAL","RICARDO GUZMAN ISLAS","ROBERTO GÓMEZ","ROBERTO ZAPOT","ROSENDO FRANCISCO","SERGIO RIVERA","SERGIO RODRIGUEZ JACOBO"],"SUPERVISOR":["ANTONIO GRANADOS","DANIEL ROJAS","GUSTAVO HERRERA GUEVARA","JOSE GUERERO","JUAN LARA","MIGUEL GRANADOS","REYNALDO LEAL","ROBERTO ZAPOT"]},"LAMINACION":{"MAQUINA":["LUMUS","NEXUS","PUIGMAL","SL2","SL3"],"TURNO":["1","2","3","6","Dia","Noche"],"OPERADOR":["Alan SL2","Azael LUMUS","Brian Gianny NEXUS","Christian LUMUS","Daniel SL2","Diego Armando LUMUS","Diego NEXUS","Edgar Rojas","Ignacio Ruben SL2","Ignacio Ruben SL3","JAIME PUIGMAL","JULIAN ANASTACIO","Joel","José Luis AYU NEXUS","Leopoldo NEXUS","Mario Jesus AYU NEXUS","Miguel Angel NEXUS","Rafael SUP","Santiago SL2","Victor SUP"],"SUPERVISOR":["Diego Mejia","Esli Alaniz","Rafael Alejandro Caballero","Victor Guarneros"]},"REFINADO":{"MAQUINA":["COMEXI","HCI","KMEC","S2DS","SOMA"],"TURNO":["1","2","3","Día","Noche"],"OPERADOR":["Alejandro HCI","Alejandro KMEC","Alejandro SUP","Andrés SD2S","Apolinar COMEXI","David SOMA","Edgar AYU","Esteban HCI","Gabino S2DS","Gerardo Eduardo KMEC","Guillermo Salvador AYU","Jose Eduardo COMEXI","José Luis KMEC","José Luis SOMA","Kevin Uriel KMEC","Luis David SOMA","Noé COMEXI","Oscar Andrés SD2S","Osvaldo AYU","Osvaldo SOMA","Salvador HCI","Victor Manuel KMEC"],"SUPERVISOR":["ALEJANDRO VELAZQUEZ","VICTOR ROMERO"]},"SIDE WELD":{"MAQUINA":["A","CONTEC","D","DOBLADORA","E","F","G","H","ITALIANA","LYAN YOU 1","LYAN YOU 2","SDAI 1","SDAI 10","SDAI 11","SDAI 12","SDAI 13","SDAI 14","SDAI 15","SDAI 2","SDAI 3","SDAI 4","SDAI 5","SDAI 6","SDAI 7","SDAI 8","SDAI 9"],"TURNO":["1.0","2.0","3.0"],"OPERADOR":["ACOSTA ESPINOZA MARCO ANTONIO","AGUILAR HERNANDEZ MARCELA","ALDO NESTOR PUENTE","ALEJANDRO LEAL HERNANDEZ","ANA KAREN DE JESUS SANCHEZ","ANDRES HERNANDEZ","ANGEL LOZANO","BALLESTEROS MARTINEZ MARTIN","BENJAMIN HERNANDEZ","BRYAN HERNANDEZ JUAREZ","CASTRO REYES LUIS GERARDO","CHRISTIAN ALVAREZ PINEDA","CRUZ CRUZ MIGUEL ANGEL","DAVID CARRILLO","DAVILA GONZALEZ RAMIRO ALEJANDRO","ELEN RAMOS","ESCALANTE ESTRADA IRVING ANTONIO","ESCALANTE LUCIO MARIA MICAELA","ESPINOSA GUDIÑO EDITH KARINA","ESPINOZA AMAYA OSCAR","FERRER ARREOLA JUAN","FLORES GUARNEROS ROBERTO CARLOS","GARCIA ORNELAS ALEJANDRO","GUARNEROS ALCIBAR DENILSON RONALDO","GUDINO VARGAS JUANA","GUSTAVO HERNANDEZ","HERNANDEZ CALDERON FERNANDO","HERNANDEZ GALINDO CESAR EDUARDO","HERNANDEZ GONZALEZ PABLO CESAR","HERNANDEZ GUARNEROS JONATHAN","HERNANDEZ LEAL JUAN ARMANDO","HUGO MONTES","IRVING MORALES","JERIEL GONZALEZ GOMEZ","JESUS ALEJANDRO DANIEL CEJA","JOAQUIN BERNAL","JOSE ALBERTO TORRES","JOSE EDUARDO GARIBAY MARTINEZ","JOSE SANTIAGO BERNABE","JUAREZ RAMIREZ HUMBERTO SALVADOR","KARINA KARLA GARCIA","LOPEZ GAYTAN FERNANDO","LORENZO ROJAS","LUGO JACOBO ISRAEL ODETH","LUIS CARCAMO","MANUEL HERNANDEZ FIERRO","MARCELIANO SOSA FRANCISCO","MARCELIANO SOSA JESUS","MARIO ROMERO TORRES","MARTINEZ AVILA PATRICIA"],"SUPERVISOR":["ANDRES HERNANDEZ","ANGEL LOZANO","BENJAMIN HERNANDEZ","DAVID CARRILLO","ELEN RAMOS","GUSTAVO HERNANDEZ","HUGO MONTES","JOAQUIN BERNAL","LORENZO ROJAS","LUIS CARCAMO","MIGUEL CHAGOYA","ORDAZ FLORES DAVID","OSCAR BAUTISTA"]},"POUCH":{"MAQUINA":["TOTANI 1","TOTANI 2","TOTANI 3","TOTANI 4","TOTANI 5","TOTANI 6","TOTANI 7"],"TURNO":["1.0","2.0","3.0"],"OPERADOR":["ALEXIS ROMERO FLORES","CASTILLO LOZANO AHAU QUITZE","CHAMORRO MARTINEZ MIGUEL ANGEL","DE LA CRUZ TREJO VICENTE","ESCALANTE LUCIO JUAN JOSE","ESLY ROBERTO GOMEZ MARTINEZ","ESPINOSA AMAYA JERSON","ESTRADA REYES NALLELI","FLORES BONIFACIO ANGEL","FLORES HERNADEZ CARLOS DAVID","GERARDO TRUJILLO SANCHEZ","GUADARRAMA SAMANO ALMA LILIA","GUARNEROS MARTINEZ JESUS","GUZMAN MANUEL JULIO ALBERTO","HERNANDEZ JIMENEZ EUSEBIO","JESUS JERONIMO BARRERA","JOSE LUIS MONDRAGON","LOZANO HERNANDEZ SARA VERONICA","MELCHOR ALBARRAN LIMON","MORALES BAILON CRISTINA","ORTEGA DAVILA GENOVEVA","PEREZ FLORES FERNANDO","PEREZ HERNANDEZ YOLANDA","PEREZ QUINTERO JOSE LUIS","RESENDIZ CASTILLO DIEGO ANDRES","REY ALTAMIRANO CARMONA","REYES ALCANTARA JOSE LUIS","SALVADOR HERNANDEZ JESUS ANGEL","SOLORIO PETRARCE ISRAEL"],"SUPERVISOR":["CASTILLO LOZANO AHAU QUITZE","DE LA CRUZ TREJO VICENTE","ESCALANTE LUCIO JUAN JOSE","FLORES BONIFACIO ANGEL","GUZMAN MANUEL JULIO ALBERTO","JESUS JERONIMO BARRERA","RESENDIZ CASTILLO DIEGO ANDRES"]}};
+
+let DB = loadDB();
+let currentSection = 'captura';
+let procFilter = 'all';
+
+function loadDB() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) {
+      const parsed = JSON.parse(raw);
+      // Siempre reconstruir el índice de OTs al cargar para garantizar que
+      // ml, piezas y demás campos estén correctamente acumulados
+      if(parsed.registros && parsed.registros.length) {
+        parsed.ots = {};
+        parsed.registros.forEach(reg => {
+          if(!parsed.ots[reg.ot]) parsed.ots[reg.ot] = {};
+          if(!parsed.ots[reg.ot][reg.proc]) parsed.ots[reg.ot][reg.proc] = {kg:0, ml:0, piezas:0, desp:0, n:0, ult:''};
+          const s = parsed.ots[reg.ot][reg.proc];
+          s.kg += (reg.kg||0); s.ml += (reg.ml||0); s.piezas += (reg.piezas||0); s.desp += (reg.desp||0); s.n++;
+          if(!s.ult || reg.fecha > s.ult) s.ult = reg.fecha;
+        });
+      }
+      return parsed;
+    }
+  } catch(e) {}
+  return { registros: [], ots: {} };
+}
+
+function saveDB() {
+  const json = JSON.stringify(DB);
+  // Guardar en localStorage
+  try { localStorage.setItem(STORAGE_KEY, json); } catch(e) {}
+  // Guardar en IndexedDB (más confiable en file://)
+  saveToIndexedDB(json);
+  updateCount();
+}
+
+// --- IndexedDB (persiste aunque falle localStorage) ---
+const IDB_NAME = 'OT_Sistema';
+const IDB_STORE = 'datos';
+const IDB_KEY = 'db_principal';
+
+function openIDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(IDB_STORE);
+    req.onsuccess = e => res(e.target.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+
+async function saveToIndexedDB(json) {
+  try {
+    const db = await openIDB();
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(json, IDB_KEY);
+  } catch(e) {}
+}
+
+async function loadFromIndexedDB() {
+  try {
+    const db = await openIDB();
+    return new Promise((res) => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).get(IDB_KEY);
+      req.onsuccess = () => res(req.result || null);
+      req.onerror = () => res(null);
+    });
+  } catch(e) { return null; }
+}
+
+// Carga datos desde IndexedDB al iniciar (complementa localStorage)
+async function iniciarConIndexedDB() {
+  const raw = await loadFromIndexedDB();
+  if(!raw) return;
+  try {
+    const parsed = JSON.parse(raw);
+    if(parsed.registros && parsed.registros.length > DB.registros.length) {
+      // Reconstruir índice de OTs con todos los campos actuales
+      parsed.ots = {};
+      parsed.registros.forEach(reg => {
+        if(!parsed.ots[reg.ot]) parsed.ots[reg.ot] = {};
+        if(!parsed.ots[reg.ot][reg.proc]) parsed.ots[reg.ot][reg.proc] = {kg:0, ml:0, piezas:0, desp:0, n:0, ult:''};
+        const s = parsed.ots[reg.ot][reg.proc];
+        s.kg += (reg.kg||0); s.ml += (reg.ml||0); s.piezas += (reg.piezas||0); s.desp += (reg.desp||0); s.n++;
+        if(!s.ult || reg.fecha > s.ult) s.ult = reg.fecha;
+      });
+      DB = parsed;
+      updateCount();
+      renderUltimos();
+      if(currentSection === 'tabla') renderTabla();
+      if(currentSection === 'dashboard') renderDash();
+    }
+  } catch(e) {}
+}
+
+// --- BACKUP / RESTORE MANUAL ---
+function descargarBackup() {
+  if(!DB.registros.length) { showToast('No hay datos para respaldar', 'err'); return; }
+  const json = JSON.stringify(DB, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `OT_Backup_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Respaldo descargado ✓', 'ok');
+}
+
+function restaurarBackup(file) {
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if(!parsed.registros || !Array.isArray(parsed.registros)) throw new Error('Archivo inválido');
+      if(!confirm(`¿Restaurar ${parsed.registros.length} registros? Se reemplazarán los datos actuales.`)) return;
+      DB = parsed;
+      saveDB();
+      renderUltimos();
+      if(currentSection === 'tabla') renderTabla();
+      if(currentSection === 'dashboard') renderDash();
+      document.getElementById('import-log').innerHTML = `<div class="alert alert-success"><strong>✓ Respaldo restaurado:</strong> ${DB.registros.length} registros cargados</div>`;
+      showToast(`${DB.registros.length} registros restaurados`, 'ok');
+    } catch(err) {
+      document.getElementById('import-log').innerHTML = `<div class="alert alert-error">Error al restaurar: ${err.message}</div>`;
+    }
+  };
+  reader.readAsText(file);
+}
+
+function updateCount() {
+  const n = DB.registros.length;
+  document.getElementById('cnt-tabla').textContent = n;
+}
+
+// --- NAVEGACIÓN ---
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.navtab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`sec-${name}`).classList.add('active');
+  document.getElementById(`tab-${name}`).classList.add('active');
+  currentSection = name;
+  if(name === 'tabla') renderTabla();
+  if(name === 'dashboard') renderDash();
+}
+
+function switchProc(proc) {
+  document.querySelectorAll('.proc-form').forEach(f => f.style.display='none');
+  document.querySelectorAll('.proc-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`form-${proc}`).style.display = '';
+  document.getElementById(`ptab-${proc}`).classList.add('active');
+}
+
+// --- IMPORTACIÓN ---
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if(file) importExcel(file);
+}
+
+function excelFecha(val) {
+  if(!val) return new Date().toISOString().split('T')[0];
+  // Si es número serial de Excel
+  if(typeof val === 'number') {
+    const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+    return d.toISOString().split('T')[0];
+  }
+  // Si ya es string o Date
+  if(val instanceof Date) return val.toISOString().split('T')[0];
+  const s = String(val).trim();
+  // Intentar parsear como fecha
+  const parsed = new Date(s);
+  if(!isNaN(parsed)) return parsed.toISOString().split('T')[0];
+  return s;
+}
+
+function importExcel(file) {
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array', cellDates: true});
+      const sheetMap = { 'IMPRESION':'IMP','LAMINACION':'LAM','REFINADO':'REF','SIDE WELD':'SW','POUCH':'POUCH' };
+      let total = 0;
+      const log = [];
+
+      Object.entries(sheetMap).forEach(([sheetName, proc]) => {
+        if(!wb.SheetNames.includes(sheetName)) return;
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {raw: false});
+        let procCount = 0;
+        rows.forEach(row => {
+          const ot = String(row['ORDEN'] || row['OT'] || '').trim().toUpperCase();
+          if(!ot || ot === 'NAN' || ot === 'UNDEFINED') return;
+          const kg = parseFloat(row['KILOS IMPRESOS'] || row['KG LAMINADOS'] || row['KG REFINADOS'] || row['KILOGRAMOS'] || 0) || 0;
+          const ml = parseFloat(row['METROS LINEALES IMPRESOS'] || row['METROS LINEALES LAMINADOS'] || row['ML REFINADOS'] || 0) || 0;
+          const piezas = parseFloat(row['PIEZAS'] || row['MILLARES'] || 0) || 0;
+          const desp = parseFloat(row['DESPERDICIO REPORTADO'] || row['DESP REPORTADO'] || 0) || 0;
+          const rollos = parseFloat(row['No. DE ROLLOS IMPRESOS'] || row['No. DE ROLLOS'] || 0) || 0;
+          const fecha = excelFecha(row['FECHA']);
+          const reg = {
+            id: String(Date.now()) + String(Math.random()).slice(2,7),
+            ot, proc, fecha,
+            maquina: row['MAQUINA'] || '',
+            turno: String(row['TURNO'] || row['TURNO '] || '').trim(),
+            operador: row['OPERADOR'] || '',
+            supervisor: row['SUPERVISOR'] || '',
+            kg, ml, piezas, desp, rollos
+          };
+          DB.registros.push(reg);
+          if(!DB.ots[ot]) DB.ots[ot] = {};
+          if(!DB.ots[ot][proc]) DB.ots[ot][proc] = {kg:0, ml:0, piezas:0, desp:0, n:0, ult:''};
+          const s = DB.ots[ot][proc];
+          s.kg += kg; s.ml += ml; s.piezas += piezas; s.desp += desp; s.n++;
+          if(!s.ult || fecha > s.ult) s.ult = fecha;
+          total++;
+          procCount++;
+        });
+        log.push(`✓ ${sheetName}: ${procCount}`);
+      });
+      saveDB();
+      document.getElementById('import-log').innerHTML = `<div class="alert alert-success"><strong>${total} registros importados</strong><br>${log.join(' | ')}<br><br><button class="btn btn-primary btn-sm" onclick="descargarBackup()"><i class="ti ti-device-floppy"></i> Descargar respaldo .json ahora</button></div>`;
+      renderUltimos();
+      showToast(`${total} registros importados`, 'ok');
+    } catch(err) {
+      document.getElementById('import-log').innerHTML = `<div class="alert alert-error">Error: ${err.message}</div>`;
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// --- LIMPIEZA ---
+function limpiarTodo() {
+  if(!confirm('¿Estás seguro? Se borrarán TODOS los datos. Esta acción no se puede deshacer.')) return;
+  DB = { registros: [], ots: {} };
+  saveDB();
+  document.getElementById('ultimos-body').innerHTML = 'No hay registros aún';
+  document.getElementById('import-log').innerHTML = '';
+  if(currentSection === 'tabla') renderTabla();
+  if(currentSection === 'dashboard') renderDash();
+  showToast('Todos los datos borrados', 'ok');
+}
+
+// --- UI HELPERS ---
+function fmtN(n){return(+n||0).toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:1})}
+function showToast(msg, type='ok') {
+  const el = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  el.className = `show toast-${type}`;
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function initSelects() {
+  ['IMP','LAM','REF','SW','POUCH'].forEach(p => {
+    const k = p === 'SW' ? 'SIDE WELD' : (p === 'IMP' ? 'IMPRESION' : (p === 'LAM' ? 'LAMINACION' : (p === 'REF' ? 'REFINADO' : 'POUCH')));
+    const cat = CATS[k];
+    if(!cat) return;
+    const fill = (id, list) => { const el = document.getElementById(`${p}-${id}`); if(el) el.innerHTML = list.map(v=>`<option value="${v}">${v}</option>`).join(''); };
+    fill('maquina', cat.MAQUINA); fill('turno', cat.TURNO); fill('operador', cat.OPERADOR); fill('supervisor', cat.SUPERVISOR);
+  });
+}
+
+function renderUltimos() {
+  const el = document.getElementById('ultimos-body');
+  const last = [...DB.registros].reverse().slice(0,8);
+  if(!last.length) { el.innerHTML='<p style="color:var(--text2);font-size:13px">No hay registros aún</p>'; return; }
+  el.innerHTML = `<div class="tbl-wrap"><table><thead><tr><th>OT</th><th>Proceso</th><th>Fecha</th><th>Máquina</th><th class="num">Kg</th><th></th></tr></thead><tbody>` + 
+    last.map(r => `<tr><td><strong>${r.ot}</strong></td><td>${PROC_NAMES[r.proc]||r.proc}</td><td>${r.fecha}</td><td>${r.maquina||''}</td><td class="num">${fmtN(r.kg)}</td><td><button class="btn btn-sm btn-danger" onclick="borrarRegistro('${r.id}')">×</button></td></tr>`).join('') + `</tbody></table></div>`;
+}
+
+function borrarRegistro(id) {
+  const idx = DB.registros.findIndex(r => String(r.id) === String(id));
+  if(idx === -1) return;
+  if(!confirm('¿Borrar este registro?')) return;
+  DB.registros.splice(idx, 1);
+  reconstruirOts();
+  saveDB();
+  renderUltimos();
+  if(currentSection==='tabla') renderTabla();
+  if(currentSection==='dashboard') renderDash();
+  showToast(excelHandle ? 'Registro eliminado localmente (no se borra del Excel maestro)' : 'Registro eliminado', 'ok');
+}
+
+function reconstruirOts() {
+  DB.ots = {};
+  DB.registros.forEach(reg => {
+    if(!DB.ots[reg.ot]) DB.ots[reg.ot] = {};
+    if(!DB.ots[reg.ot][reg.proc]) DB.ots[reg.ot][reg.proc] = {kg:0, ml:0, piezas:0, desp:0, n:0, ult:''};
+    const s = DB.ots[reg.ot][reg.proc];
+    s.kg += reg.kg; s.ml += reg.ml; s.piezas += reg.piezas; s.desp += reg.desp; s.n++;
+    if(!s.ult || reg.fecha > s.ult) s.ult = reg.fecha;
+  });
+}
+
+// --- GUARDAR REGISTRO MANUAL ---
+function guardarRegistro() {
+  const ot = document.getElementById('cap-ot').value.trim().toUpperCase();
+  if(!ot) { showAlert('Ingresa el número de OT', 'error'); return; }
+  // Detectar proceso activo
+  let proc = null;
+  document.querySelectorAll('.proc-tab').forEach(t => { if(t.classList.contains('active')) proc = t.id.replace('ptab-',''); });
+  if(!proc) { showAlert('Selecciona un proceso', 'error'); return; }
+
+  const fecha = document.getElementById(`${proc}-fecha`).value || new Date().toISOString().split('T')[0];
+  const maquina = document.getElementById(`${proc}-maquina`)?.value || '';
+  const turno = document.getElementById(`${proc}-turno`)?.value || '';
+  const operador = document.getElementById(`${proc}-operador`)?.value || '';
+  const supervisor = document.getElementById(`${proc}-supervisor`)?.value || '';
+  const kg = parseFloat(document.getElementById(`${proc}-kg`)?.value) || 0;
+  const ml = parseFloat(document.getElementById(`${proc}-ml`)?.value) || 0;
+  const rollos = parseFloat(document.getElementById(`${proc}-rollos`)?.value) || 0;
+  const piezas = parseFloat(document.getElementById(`${proc}-piezas`)?.value) || 0;
+  const desp = parseFloat(document.getElementById(`${proc}-desp`)?.value) || 0;
+  const paq = parseFloat(document.getElementById(`${proc}-paq`)?.value) || 0;
+
+  const reg = { id: String(Date.now()) + String(Math.random()).slice(2,7), ot, proc, fecha, maquina, turno, operador, supervisor, kg, ml, rollos, piezas, desp, paq };
+  DB.registros.push(reg);
+  if(!DB.ots[ot]) DB.ots[ot] = {};
+  if(!DB.ots[ot][proc]) DB.ots[ot][proc] = {kg:0, ml:0, piezas:0, desp:0, n:0, ult:''};
+  const s = DB.ots[ot][proc];
+  s.kg += kg; s.ml += ml; s.piezas += piezas; s.desp += desp; s.n++;
+  if(!s.ult || fecha > s.ult) s.ult = fecha;
+  saveDB();
+  encolarEscrituraMaestro(reg);
+  renderUltimos();
+  showAlert(`✓ Registro guardado: ${ot} — ${PROC_NAMES[proc]}`, 'success');
+  limpiarForm(proc);
+}
+
+function limpiarForm(proc) {
+  if(!proc) {
+    document.querySelectorAll('.proc-tab').forEach(t => { if(t.classList.contains('active')) proc = t.id.replace('ptab-',''); });
+  }
+  if(!proc) return;
+  ['kg','ml','rollos','piezas','desp','paq'].forEach(f => {
+    const el = document.getElementById(`${proc}-${f}`);
+    if(el) el.value = '';
+  });
+  const fechaEl = document.getElementById(`${proc}-fecha`);
+  if(fechaEl) fechaEl.value = new Date().toISOString().split('T')[0];
+}
+
+function showAlert(msg, type) {
+  const area = document.getElementById('alert-area');
+  area.innerHTML = `<div class="alert alert-${type==='error'?'error':'success'}" style="margin-bottom:1rem">${msg}</div>`;
+  setTimeout(() => { area.innerHTML = ''; }, 4000);
+}
+
+// --- AUTOCOMPLETE OT ---
+function onOTInput(val) {
+  const q = val.trim().toUpperCase();
+  const sug = document.getElementById('ot-suggest');
+  const info = document.getElementById('ot-info');
+  if(q.length < 2) { sug.style.display='none'; info.innerHTML=''; return; }
+  const matches = Object.keys(DB.ots).filter(o => o.includes(q)).slice(0,8);
+  if(!matches.length) { sug.style.display='none'; info.innerHTML=''; return; }
+  sug.style.display='block';
+  sug.innerHTML = matches.map(o => `<div class="ac-item" onclick="selectCapOT('${o}')">${o}</div>`).join('');
+  mostrarInfoOT(q, info);
+}
+
+function selectCapOT(ot) {
+  document.getElementById('cap-ot').value = ot;
+  document.getElementById('ot-suggest').style.display='none';
+  mostrarInfoOT(ot, document.getElementById('ot-info'));
+}
+
+function mostrarInfoOT(ot, el) {
+  const data = DB.ots[ot];
+  if(!data) { el.innerHTML=''; return; }
+  const procs = Object.entries(data).map(([p,v]) => `<span class="badge badge-blue" style="margin-right:4px">${PROC_NAMES[p]||p}: ${fmtN(v.kg)} kg</span>`).join('');
+  el.innerHTML = `OT encontrada — procesos previos: ${procs}`;
+}
+
+// --- CONSULTA ---
+function onConsInput(val) {
+  const q = val.trim().toUpperCase();
+  const sug = document.getElementById('cons-suggest');
+  if(q.length < 2) { sug.style.display='none'; document.getElementById('cons-result').innerHTML=''; return; }
+  const matches = Object.keys(DB.ots).filter(o => o.includes(q)).slice(0,8);
+  if(!matches.length) { sug.style.display='none'; return; }
+  sug.style.display='block';
+  sug.innerHTML = matches.map(o => `<div class="ac-item" onclick="consultarOT('${o}')">${o}</div>`).join('');
+  if(DB.ots[q]) consultarOT(q);
+}
+
+function consultarOT(ot) {
+  document.getElementById('cons-ot').value = ot;
+  document.getElementById('cons-suggest').style.display='none';
+  const data = DB.ots[ot];
+  if(!data) { document.getElementById('cons-result').innerHTML=`<div class="alert alert-error">OT <strong>${ot}</strong> no encontrada.</div>`; return; }
+
+  const totalKg = Object.values(data).reduce((s,v)=>s+v.kg,0);
+  const procsHTML = PROC_LIST.map(p => {
+    const v = data[p];
+    if(!v) return `<div class="proc-card no-data"><div class="proc-card-title">${PROC_NAMES[p]}</div><div style="font-size:12px;color:var(--text2)">Sin datos</div></div>`;
+    return `<div class="proc-card has-data"><div class="proc-card-title">${PROC_NAMES[p]}</div><div class="proc-card-kg">${fmtN(v.kg)} <span style="font-size:12px;font-weight:400">kg</span></div><div style="font-size:12px;color:var(--blue);font-weight:500">${fmtN(v.ml)} ML &nbsp;·&nbsp; ${fmtN(v.piezas)} millares</div><div style="font-size:11px;color:var(--text2)">${v.n} registro(s) · ${v.ult}</div></div>`;
+  }).join('');
+
+  // Todos los registros de la OT
+  const regs = DB.registros.filter(r => r.ot === ot).reverse();
+  const detHTML = regs.map(r => `<tr><td>${PROC_NAMES[r.proc]||r.proc}</td><td>${r.fecha}</td><td>${r.maquina||'-'}</td><td>${r.turno||'-'}</td><td>${r.operador||'-'}</td><td class="num">${fmtN(r.kg)}</td><td class="num">${fmtN(r.ml)}</td><td class="num">${fmtN(r.piezas)}</td></tr>`).join('');
+
+  document.getElementById('cons-result').innerHTML = `
+    <div style="margin-bottom:1rem"><span class="badge badge-blue" style="font-size:14px;padding:6px 14px">OT: ${ot}</span></div>
+    <div class="proc-cards">${procsHTML}</div>
+    <div class="tbl-wrap" style="margin-top:1rem"><table><thead><tr><th>Proceso</th><th>Fecha</th><th>Máquina</th><th>Turno</th><th>Operador</th><th class="num">Kg</th><th class="num">Metros Lin.</th><th class="num">Millares</th></tr></thead><tbody>${detHTML}</tbody></table></div>`;
+}
+
+// --- TABLA / HISTORIAL ---
+function setFilter(el, f) {
+  document.querySelectorAll('.ftag').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  procFilter = f;
+  renderTabla();
+}
+
+function renderTabla() {
+  const q = (document.getElementById('tbl-search')?.value || '').trim().toUpperCase();
+  let regs = [...DB.registros].reverse();
+  if(procFilter !== 'all') regs = regs.filter(r => r.proc === procFilter);
+  if(q) regs = regs.filter(r => r.ot.includes(q) || (r.operador||'').toUpperCase().includes(q) || (r.maquina||'').toUpperCase().includes(q));
+
+  const el = document.getElementById('tabla-body');
+  if(!regs.length) { el.innerHTML='<p style="color:var(--text2);font-size:13px;padding:1rem 0">No hay registros que coincidan.</p>'; return; }
+  el.innerHTML = `<div class="tbl-wrap"><table><thead><tr><th>OT</th><th>Proceso</th><th>Fecha</th><th>Máquina</th><th>Turno</th><th>Operador</th><th>Supervisor</th><th class="num">Kg</th><th class="num">ML</th><th class="num">Piezas</th><th class="num">Desp.</th><th></th></tr></thead><tbody>` +
+    regs.map(r => `<tr><td><strong>${r.ot}</strong></td><td>${PROC_NAMES[r.proc]||r.proc}</td><td>${r.fecha}</td><td>${r.maquina||''}</td><td>${r.turno||''}</td><td>${r.operador||''}</td><td>${r.supervisor||''}</td><td class="num">${fmtN(r.kg)}</td><td class="num">${fmtN(r.ml)}</td><td class="num">${fmtN(r.piezas)}</td><td class="num">${fmtN(r.desp)}</td><td><button class="btn btn-sm btn-danger" onclick="borrarRegistro('${r.id}')">×</button></td></tr>`).join('') +
+    `</tbody></table></div><div style="font-size:12px;color:var(--text2);margin-top:8px">${regs.length} registro(s) mostrados</div>`;
+}
+
+// --- DASHBOARD ---
+function renderDash() {
+  const el = document.getElementById('dash-body');
+  const regs = DB.registros;
+  if(!regs.length) { el.innerHTML='<div class="card"><div class="card-body" style="color:var(--text2)">No hay datos para mostrar. Importa un Excel o captura registros.</div></div>'; return; }
+
+  const totalKg = regs.reduce((s,r)=>s+r.kg,0);
+  const totalML = regs.reduce((s,r)=>s+r.ml,0);
+  const totalOTs = Object.keys(DB.ots).length;
+  const totalRegs = regs.length;
+
+  // KG por proceso
+  const kgProc = {};
+  PROC_LIST.forEach(p => { kgProc[p] = regs.filter(r=>r.proc===p).reduce((s,r)=>s+r.kg,0); });
+  const maxKg = Math.max(...Object.values(kgProc), 1);
+
+  // Últimas OTs activas (con más procesos)
+  const otList = Object.entries(DB.ots).map(([ot, procs]) => ({
+    ot, nProcs: Object.keys(procs).length,
+    totalKg: Object.values(procs).reduce((s,v)=>s+v.kg,0),
+    ult: Object.values(procs).map(v=>v.ult).sort().reverse()[0]||''
+  })).sort((a,b)=>b.ult.localeCompare(a.ult)).slice(0,15);
+
+  const colors = {IMP:'#8b5cf6',LAM:'#06b6d4',REF:'#f59e0b',SW:'#10b981',POUCH:'#f43f5e'};
+
+  el.innerHTML = `
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-label">Total Registros</div><div class="stat-val">${totalRegs.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">Órdenes de Trabajo</div><div class="stat-val">${totalOTs.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">Kg Totales</div><div class="stat-val">${fmtN(totalKg)}</div></div>
+    <div class="stat-card"><div class="stat-label">ML Totales</div><div class="stat-val">${fmtN(totalML)}</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Kg por Proceso</div></div>
+      <div class="card-body">
+        ${PROC_LIST.map(p => `
+          <div style="margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+              <span style="font-weight:500">${PROC_NAMES[p]}</span>
+              <span style="color:var(--text2)">${fmtN(kgProc[p])} kg</span>
+            </div>
+            <div class="pb"><div class="pf" style="width:${Math.round(kgProc[p]/maxKg*100)}%;background:${colors[p]}"></div></div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">OTs Recientes</div></div>
+      <div class="card-body" style="padding:0">
+        <div class="tbl-wrap" style="border:none">
+          <table><thead><tr><th>OT</th><th>Procesos</th><th class="num">Kg</th><th>Última fecha</th></tr></thead><tbody>
+          ${otList.map(o => `<tr><td><strong>${o.ot}</strong></td><td>${o.nProcs}</td><td class="num">${fmtN(o.totalKg)}</td><td>${o.ult}</td></tr>`).join('')}
+          </tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// --- CONSTRUCCIÓN DEL WORKBOOK (compartida entre exportar y guardado vinculado) ---
+function construirWorkbook() {
+  const wb = XLSX.utils.book_new();
+  // Hoja general
+  const headers = ['OT','Proceso','Fecha','Máquina','Turno','Operador','Supervisor','Kg','ML','Piezas','Desperdicio','Rollos'];
+  const rows = DB.registros.map(r => [r.ot, PROC_NAMES[r.proc]||r.proc, r.fecha, r.maquina, r.turno, r.operador, r.supervisor, r.kg, r.ml, r.piezas, r.desp, r.rollos]);
+  const wsAll = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  XLSX.utils.book_append_sheet(wb, wsAll, 'TODOS');
+  // Hojas por proceso
+  PROC_LIST.forEach(p => {
+    const pRegs = DB.registros.filter(r=>r.proc===p);
+    if(!pRegs.length) return;
+    const pRows = pRegs.map(r => [r.ot, r.fecha, r.maquina, r.turno, r.operador, r.supervisor, r.kg, r.ml, r.piezas, r.desp, r.rollos]);
+    const ws = XLSX.utils.aoa_to_sheet([['OT','Fecha','Máquina','Turno','Operador','Supervisor','Kg','ML','Piezas','Desperdicio','Rollos'], ...pRows]);
+    XLSX.utils.book_append_sheet(wb, ws, PROC_NAMES[p]||p);
+  });
+  return wb;
+}
+
+// --- EXPORTAR EXCEL (descarga manual, un archivo nuevo cada vez) ---
+function exportarExcel() {
+  if(!DB.registros.length) { showToast('No hay datos para exportar', 'err'); return; }
+  try {
+    const wb = construirWorkbook();
+    const fecha = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `SeguimientoOT_${fecha}.xlsx`);
+    showToast('Excel exportado correctamente', 'ok');
+  } catch(e) { showToast('Error al exportar: ' + e.message, 'err'); }
+}
+
+// --- VÍNCULO CON ARCHIVO EXCEL (guardado automático en el mismo archivo) ---
+let excelHandle = null;
+const IDB_HANDLE_KEY = 'excel_handle_v1';
+
+async function guardarHandleIDB(handle) {
+  try {
+    const db = await openIDB();
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(handle, IDB_HANDLE_KEY);
+  } catch(e) {}
+}
+
+async function cargarHandleIDB() {
+  try {
+    const db = await openIDB();
+    return new Promise((res) => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).get(IDB_HANDLE_KEY);
+      req.onsuccess = () => res(req.result || null);
+      req.onerror = () => res(null);
+    });
+  } catch(e) { return null; }
+}
+
+async function verificarPermisoEscritura(handle, pedirSiFalta) {
+  const opts = { mode: 'readwrite' };
+  try {
+    if((await handle.queryPermission(opts)) === 'granted') return true;
+    if(pedirSiFalta && (await handle.requestPermission(opts)) === 'granted') return true;
+  } catch(e) {}
+  return false;
+}
+
+function actualizarEstadoVinculo() {
+  const label = document.getElementById('vincular-label');
+  const btn = document.getElementById('btn-vincular-excel');
+  if(!label || !btn) return;
+  if(excelHandle) {
+    label.textContent = `Vinculado: ${excelHandle.name}`;
+    btn.classList.add('btn-success');
+    btn.classList.remove('btn-outline');
+  } else {
+    label.textContent = 'Vincular Excel';
+    btn.classList.remove('btn-success');
+    btn.classList.add('btn-outline');
+  }
+}
+
+async function vincularExcel() {
+  if(!window.showOpenFilePicker) {
+    showToast('Esta función solo funciona en Chrome o Edge de escritorio', 'err');
+    return;
+  }
+  try {
+    const [handle] = await window.showOpenFilePicker({
+      types: [{ description: 'Excel', accept: {'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']} }],
+      excludeAcceptAllOption: false,
+      multiple: false
+    });
+    const ok = await verificarPermisoEscritura(handle, true);
+    if(!ok) { showToast('Permiso de escritura denegado para ese archivo', 'err'); return; }
+    excelHandle = handle;
+    await guardarHandleIDB(handle);
+    actualizarEstadoVinculo();
+    showToast(`Archivo vinculado: ${handle.name}. Los nuevos registros se agregarán a sus hojas.`, 'ok');
+    // OJO: a propósito NO se reescribe el archivo completo aquí — solo se
+    // toca al capturar un registro nuevo, y solo se agrega una fila a la
+    // hoja del proceso correspondiente (ver escribirRegistroEnMaestro).
+  } catch(e) {
+    if(e.name !== 'AbortError') showToast('Error al vincular archivo: ' + e.message, 'err');
+  }
+}
+
+async function restaurarVinculoExcel() {
+  try {
+    const handle = await cargarHandleIDB();
+    if(!handle) return;
+    const ok = await verificarPermisoEscritura(handle, false);
+    if(ok) {
+      excelHandle = handle;
+      actualizarEstadoVinculo();
+    } else {
+      // El permiso se perdió (normal entre sesiones); se necesita un clic del usuario para reconectar
+      excelHandle = handle; // conservamos el handle para no pedir el archivo de nuevo
+      const label = document.getElementById('vincular-label');
+      if(label) label.textContent = `Reconectar: ${handle.name}`;
+    }
+  } catch(e) {}
+}
+
+// --- ESCRITURA DIRECTA EN EL EXCEL MAESTRO ---
+// Agrega el registro capturado como una fila NUEVA en la hoja del proceso
+// correspondiente (IMPRESION, LAMINACION, REFINADO, SIDE WELD, POUCH),
+// respetando las columnas que ya existen en esa hoja. No toca ninguna otra
+// hoja del archivo (rep-ov-espec, rep-dtll-ocmp, SEGUIMIENTO A OT, etc.).
+const PROC_SHEET_NAMES = {IMP:'IMPRESION', LAM:'LAMINACION', REF:'REFINADO', SW:'SIDE WELD', POUCH:'POUCH'};
+
+const PROC_FIELD_HEADERS = {
+  IMP:   { ot:['ORDEN','OT'], fecha:['FECHA'], maquina:['MAQUINA'], turno:['TURNO','TURNO '], operador:['OPERADOR'], supervisor:['SUPERVISOR'], rollos:['No. DE ROLLOS IMPRESOS','No. DE ROLLOS'], kg:['KILOS IMPRESOS'], ml:['METROS LINEALES IMPRESOS'], desp:['DESPERDICIO REPORTADO','DESP REPORTADO'] },
+  LAM:   { ot:['ORDEN','OT'], fecha:['FECHA'], maquina:['MAQUINA'], turno:['TURNO'], operador:['OPERADOR'], supervisor:['SUPERVISOR'], kg:['KG LAMINADOS'], ml:['METROS LINEALES LAMINADOS'], desp:['DESPERDICIO REPORTADO','DESP REPORTADO'] },
+  REF:   { ot:['ORDEN','OT'], fecha:['FECHA'], maquina:['MAQUINA'], turno:['TURNO'], operador:['OPERADOR'], supervisor:['SUPERVISOR'], kg:['KG REFINADOS'], ml:['ML REFINADOS'], desp:['DESPERDICIO REPORTADO','DESP REPORTADO'], paq:['PAQUETES'] },
+  SW:    { ot:['ORDEN','OT'], fecha:['FECHA'], maquina:['MAQUINA'], turno:['TURNO'], operador:['OPERADOR'], supervisor:['SUPERVISOR'], kg:['KILOGRAMOS'], piezas:['PIEZAS'], desp:['DESPERDICIO REPORTADO','DESP REPORTADO'] },
+  POUCH: { ot:['ORDEN','OT'], fecha:['FECHA'], maquina:['MAQUINA'], turno:['TURNO'], operador:['OPERADOR'], supervisor:['SUPERVISOR'], kg:['KILOGRAMOS'], piezas:['PIEZAS'], desp:['DESPERDICIO REPORTADO','DESP REPORTADO'] }
+};
+
+function normalizarHeader(h) { return String(h||'').trim().toUpperCase(); }
+
+function encontrarColumnas(headerRow, mapaCampos) {
+  const norm = headerRow.map(normalizarHeader);
+  const cols = {};
+  Object.entries(mapaCampos).forEach(([campo, sinonimos]) => {
+    const sinN = sinonimos.map(normalizarHeader);
+    const idx = norm.findIndex(h => sinN.includes(h));
+    cols[campo] = idx === -1 ? null : idx;
+  });
+  return cols;
+}
+
+// Cola: asegura que las escrituras al archivo maestro ocurran una a la vez
+// (si capturas varios registros seguidos) para no corromper el archivo.
+let excelWriteLock = Promise.resolve();
+function encolarEscrituraMaestro(reg) {
+  excelWriteLock = excelWriteLock
+    .then(() => escribirRegistroEnMaestro(reg))
+    .catch(e => { console.error(e); showToast('Error al actualizar el Excel maestro: ' + e.message, 'err'); });
+  return excelWriteLock;
+}
+
+async function escribirRegistroEnMaestro(reg) {
+  if(!excelHandle) return;
+  const ok = await verificarPermisoEscritura(excelHandle, true);
+  if(!ok) {
+    showToast('Se perdió el permiso de escritura del Excel maestro. Haz clic en "Reconectar".', 'err');
+    excelHandle = null; actualizarEstadoVinculo();
+    return;
+  }
+  const sheetName = PROC_SHEET_NAMES[reg.proc];
+  showToast(`Agregando a "${sheetName}" en el Excel maestro…`, 'ok');
+  const file = await excelHandle.getFile();
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, {type:'array', cellDates:true, cellStyles:true});
+  if(!sheetName || !wb.Sheets[sheetName]) {
+    showToast(`No encontré la hoja "${sheetName}" en el Excel maestro`, 'err');
+    return;
+  }
+  const ws = wb.Sheets[sheetName];
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  // Leer encabezados de la fila 1 para saber en qué columna va cada dato
+  const headerRow = [];
+  for(let c = range.s.c; c <= range.e.c; c++) {
+    const addr = XLSX.utils.encode_cell({r: range.s.r, c});
+    headerRow.push(ws[addr] ? ws[addr].v : '');
+  }
+  const cols = encontrarColumnas(headerRow, PROC_FIELD_HEADERS[reg.proc]);
+  const nuevaFila = range.e.r + 1;
+  const valores = {
+    ot: reg.ot, fecha: reg.fecha, maquina: reg.maquina, turno: reg.turno,
+    operador: reg.operador, supervisor: reg.supervisor, kg: reg.kg, ml: reg.ml,
+    desp: reg.desp, rollos: reg.rollos, piezas: reg.piezas, paq: reg.paq
+  };
+  Object.entries(cols).forEach(([campo, colIdx]) => {
+    if(colIdx === null || colIdx === undefined) return;
+    const val = valores[campo];
+    if(val === undefined || val === null || val === '') return;
+    const addr = XLSX.utils.encode_cell({r: nuevaFila, c: colIdx});
+    if(campo === 'fecha') {
+      const d = new Date(val + 'T00:00:00');
+      ws[addr] = {t:'d', v: d, z: 'mm/dd/yyyy'};
+    } else if(typeof val === 'number') {
+      ws[addr] = {t:'n', v: val};
+    } else {
+      ws[addr] = {t:'s', v: String(val)};
+    }
+  });
+  range.e.r = nuevaFila;
+  ws['!ref'] = XLSX.utils.encode_range(range);
+
+  const outBuf = XLSX.write(wb, {bookType:'xlsx', type:'array', cellStyles:true, compression:true});
+  const writable = await excelHandle.createWritable();
+  await writable.write(outBuf);
+  await writable.close();
+  actualizarEstadoVinculo();
+  showToast(`✓ Registro agregado a "${sheetName}" en el Excel maestro`, 'ok');
+}
+
+
+
+// --- SEGURIDAD / CLAVE ---
+function abrirModalClave() {
+  document.getElementById('ot-modal-titulo').textContent = 'Desbloquear Captura';
+  document.getElementById('ot-modal-subtitulo').textContent = 'Ingresa la clave de acceso';
+  document.getElementById('ot-pass-input').value = '';
+  document.getElementById('ot-modal-err').style.display = 'none';
+  document.getElementById('ot-modal-overlay').style.display = 'flex';
+  setTimeout(() => document.getElementById('ot-pass-input').focus(), 100);
+  document.getElementById('ot-btn-ingresar').onclick = verificarClave;
+}
+
+function cerrarModalClave() { document.getElementById('ot-modal-overlay').style.display='none'; }
+
+function verificarClave() {
+  const val = document.getElementById('ot-pass-input').value;
+  const errEl = document.getElementById('ot-modal-err');
+  if(val.length >= 4) {
+    errEl.style.display = 'none';
+    document.getElementById('captura-locked-content').classList.add('visible');
+    const bar = document.getElementById('lock-captura-bar');
+    bar.classList.add('unlocked');
+    bar.querySelector('span').textContent = 'Captura desbloqueada ✓';
+    const btn = bar.querySelector('button');
+    btn.textContent = '🔒 Bloquear';
+    btn.onclick = () => location.reload();
+    cerrarModalClave();
+    showToast('Captura desbloqueada', 'ok');
+  } else {
+    errEl.style.display = 'block';
+    errEl.textContent = 'La clave debe tener al menos 4 caracteres';
+  }
+}
+
+function cambiarClave() {
+  showToast('Función de cambio de clave disponible en versión enterprise', 'ok');
+}
+
+function toggleOtEye() {
+  const inp = document.getElementById('ot-pass-input');
+  const icon = document.getElementById('ot-eye-icon');
+  if(inp.type === 'password') { inp.type='text'; icon.className='ti ti-eye-off'; }
+  else { inp.type='password'; icon.className='ti ti-eye'; }
+}
+
+// Tecla Enter en modal
+document.addEventListener('keydown', e => {
+  if(e.key === 'Enter' && document.getElementById('ot-modal-overlay').style.display === 'flex') verificarClave();
+});
+
+// --- PUBLICAR HTML CON DATOS EMBEBIDOS ---
+function publicarHTML() {
+  if(!DB.registros.length) { showToast('No hay datos para publicar', 'err'); return; }
+  try {
+    const dbJson = JSON.stringify(DB);
+    // Insertar los datos dentro del HTML como variable JS
+    const marker = '/* __EMBEDDED_DB__ */';
+    let html = document.documentElement.outerHTML;
+    
+    // Reemplazar o insertar el bloque de datos embebidos
+    if(html.includes(marker)) {
+      html = html.replace(/\/\* __EMBEDDED_DB__ \*\/[\s\S]*?\/\* __END_EMBEDDED_DB__ \*\//, 
+        `/* __EMBEDDED_DB__ */ var EMBEDDED_DB = ${dbJson}; /* __END_EMBEDDED_DB__ */`);
+    } else {
+      html = html.replace('<script>', `<script>
+/* __EMBEDDED_DB__ */ var EMBEDDED_DB = ${dbJson}; /* __END_EMBEDDED_DB__ */
+`, 1);
+    }
+    
+    const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'SistemaSeguimientoOT.html';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('HTML descargado — súbelo a OneDrive ✓', 'ok');
+  } catch(e) { showToast('Error: ' + e.message, 'err'); }
+}
+
+window.onload = () => {
+  // Si hay datos embebidos en el HTML, cargarlos primero
+  if(typeof EMBEDDED_DB !== 'undefined' && EMBEDDED_DB && EMBEDDED_DB.registros && EMBEDDED_DB.registros.length) {
+    // Reconstruir índice de OTs
+    EMBEDDED_DB.ots = {};
+    EMBEDDED_DB.registros.forEach(reg => {
+      if(!EMBEDDED_DB.ots[reg.ot]) EMBEDDED_DB.ots[reg.ot] = {};
+      if(!EMBEDDED_DB.ots[reg.ot][reg.proc]) EMBEDDED_DB.ots[reg.ot][reg.proc] = {kg:0,ml:0,piezas:0,desp:0,n:0,ult:''};
+      const s = EMBEDDED_DB.ots[reg.ot][reg.proc];
+      s.kg += (reg.kg||0); s.ml += (reg.ml||0); s.piezas += (reg.piezas||0); s.desp += (reg.desp||0); s.n++;
+      if(!s.ult || reg.fecha > s.ult) s.ult = reg.fecha;
+    });
+    // Usar embebidos solo si son más recientes que los locales
+    if(EMBEDDED_DB.registros.length > DB.registros.length) {
+      DB = EMBEDDED_DB;
+      saveDB();
+    }
+  }
+  // Poner fecha de hoy en todos los formularios
+  const hoy = new Date().toISOString().split('T')[0];
+  PROC_LIST.forEach(p => { const el = document.getElementById(`${p}-fecha`); if(el) el.value = hoy; });
+  updateCount();
+  initSelects();
+  renderUltimos();
+  iniciarConIndexedDB();
+  restaurarVinculoExcel();
+};
+</script>
+</body>
+</html>
